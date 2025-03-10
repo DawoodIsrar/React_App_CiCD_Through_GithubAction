@@ -30,7 +30,7 @@ function App() {
       <nav className="navbar navbar-light bg-light mb-2">
         <a class="navbar-brand" href="https://www.youtube.com/@IntegrationNinjas">
           <img src="./logo_p.png" width="50" height="50" class="d-inline-block" alt="" />
-          Integration Ninja
+          React App CICD Through Github Action
         </a>
       </nav>
       <div className='container'>
