@@ -41,7 +41,7 @@ jobs:
     env:
       DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
       DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
-      MONGO_PASS: ${{ secrets.MONGO_PASS }}
+      REACT_APP_SERVER_BASE_URL: ${{ secrets.REACT_APP_SERVER_BASE_URL }}
 
     steps:
       - name: Checkout Repository
