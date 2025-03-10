@@ -1,0 +1,77 @@
+name: Deploy Node Application
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Debug Secrets (DO NOT PRINT PASSWORDS)
+        run: |
+          echo "Checking Secrets..."
+          if [ -z "${{ secrets.DOCKER_NAME }}" ]; then 
+            echo "❌ ERROR: DOCKER_NAME is empty"; exit 1; 
+          else 
+            echo "✅ DOCKER_NAME is set"; 
+          fi
+          if [ -z "${{ secrets.DOCKER_PASS }}" ]; then 
+            echo "❌ ERROR: DOCKER_PASS is empty"; exit 1; 
+          else 
+            echo "✅ DOCKER_PASS is set"; 
+          fi
+
+      - name: Login to Docker Hub (Use PAT)
+        run: echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_NAME }}" --password-stdin
+
+      - name: Build Docker Image
+        run: docker build -t engrdawoodisrar/react-app:latest --build-arg REACT_APP_NODE_ENV='production' --build-arg REACT_APP_SERVER_BASE_URL="${{ secrets.REACT_APP_SERVER_BASE_URL }}" .
+
+      - name: Publish Image to Docker Hub
+        run: docker push engrdawoodisrar/react-app:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    env:
+      DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
+      DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
+      MONGO_PASS: ${{ secrets.MONGO_PASS }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Ensure Docker is Installed & Running
+        run: |
+          if ! command -v docker &> /dev/null; then
+            echo "❌ ERROR: Docker is not installed"; exit 1;
+          fi
+          if ! systemctl is-active --quiet docker; then
+            echo "⚠️ Docker is not running, attempting to start..."
+            systemctl start docker || echo "⚠️ Could not start Docker (may require manual intervention)"
+          fi
+          docker --version
+          docker ps
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_NAME }}" --password-stdin
+
+      - name: Pull Image from Docker Hub
+        run: docker pull engrdawoodisrar/react-app:latest
+
+      - name: Stop and Remove Old Container (if exists)
+        run: |
+          docker stop react-app-container || true
+          docker rm react-app-container || true
+
+      - name: Run Docker Container
+        run: |
+          docker run -d -p 3000:80 \
+            --name react-app-container \
+            engrdawoodisrar/react-app:latest
